@@ -39,18 +39,20 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_hal.h"
-#include <stdarg.h>
 
 /* USER CODE BEGIN Includes */
-
+#include <stdarg.h>
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
+SPI_HandleTypeDef hspi1;
+
 UART_HandleTypeDef huart2;
-const size_t PRINT_DEBUG_BUFFER_SIZE = 512;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+
+const size_t PRINT_DEBUG_BUFFER_SIZE = 512;
 
 /* USER CODE END PV */
 
@@ -58,6 +60,7 @@ const size_t PRINT_DEBUG_BUFFER_SIZE = 512;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_SPI1_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -101,6 +104,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -144,24 +148,6 @@ int main(void)
   }
   /* USER CODE END 3 */
 
-}
-
-//void write_debug(char *str, uint16_t len) {
-//	HAL_UART_Transmit(&huart2, (uint8_t *) str, len, 0xFFFF);
-//}
-
-void write_debug(char *str, ...) {
-	char output_str[PRINT_DEBUG_BUFFER_SIZE];
-	va_list args;
-	va_start(args, str);
-	int len = vsnprintf(output_str, PRINT_DEBUG_BUFFER_SIZE, str, args);
-	va_end (args);
-
-	if (len >= PRINT_DEBUG_BUFFER_SIZE) {
-		len = PRINT_DEBUG_BUFFER_SIZE - 1;
-	}
-
-	HAL_UART_Transmit(&huart2, (uint8_t *) output_str, len, 0xFFFF);
 }
 
 /**
@@ -222,6 +208,30 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
+/* SPI1 init function */
+static void MX_SPI1_Init(void)
+{
+
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
 /* USART2 init function */
 static void MX_USART2_UART_Init(void)
 {
@@ -238,6 +248,7 @@ static void MX_USART2_UART_Init(void)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
+
 }
 
 /** Configure pins as 
@@ -277,6 +288,24 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+//void write_debug(char *str, uint16_t len) {
+//	HAL_UART_Transmit(&huart2, (uint8_t *) str, len, 0xFFFF);
+//}
+
+void write_debug(char *str, ...) {
+	char output_str[PRINT_DEBUG_BUFFER_SIZE];
+	va_list args;
+	va_start(args, str);
+	int len = vsnprintf(output_str, PRINT_DEBUG_BUFFER_SIZE, str, args);
+	va_end (args);
+
+	if (len >= PRINT_DEBUG_BUFFER_SIZE) {
+		len = PRINT_DEBUG_BUFFER_SIZE - 1;
+	}
+
+	HAL_UART_Transmit(&huart2, (uint8_t *) output_str, len, 0xFFFF);
+}
 
 /* USER CODE END 4 */
 
