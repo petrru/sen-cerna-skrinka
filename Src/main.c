@@ -65,6 +65,10 @@ static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 
+//void write_debug(char *str, uint16_t len);
+void write_debug(char *str, ...);
+int16_t spi_read_short(uint8_t addr);
+
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -96,9 +100,6 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
-  //void write_debug(char *str, uint16_t len);
-  void write_debug(char *str, ...);
-
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -124,7 +125,7 @@ int main(void)
 	  HAL_Delay(1000);*/
 
 	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 0) {
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 
 		  if (!written) {
 			  write_debug("Ahoj %d!\n", 42);
@@ -136,6 +137,24 @@ int main(void)
 		  written = 0;
 	  }
 
+	  // OUT_X_L_A (28h), OUT_X_H_A (29h)
+	  // OUT_Y_L_A (2Ah), OUT_X_H_A (2Bh)
+	  // OUT_X_L_A (2Ch), OUT_X_H_A (2Dh)
+
+	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+
+	  //int16_t acc_x = spi_read_short(0x28);
+	  //int16_t acc_y = spi_read_short(0x2a);
+	  //int16_t acc_z = spi_read_short(0x2c);
+
+	  int16_t acc_x = spi_read_short(0x08);
+	  int16_t acc_y = spi_read_short(0x0a);
+	  int16_t acc_z = spi_read_short(0x0c);
+
+
+	  write_debug("Gyro x=%d y=%d z=%d\n", acc_x, acc_y, acc_z);
+
+	  HAL_Delay(100);
 
 	  // HAL_UART_Transmit(USART2, "ABC", 3, 5000);
 	  //HAL_UART_Transmit(UART5, "ABC", 3, 5000);
@@ -270,6 +289,9 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
@@ -277,6 +299,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PC0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
@@ -305,6 +334,14 @@ void write_debug(char *str, ...) {
 	}
 
 	HAL_UART_Transmit(&huart2, (uint8_t *) output_str, len, 0xFFFF);
+}
+
+int16_t spi_read_short(uint8_t addr) {
+	//uint8_t addr_arr[1] = {addr};
+	//HAL_SPI_Transmit(&hspi1, addr_arr, 1, 0xFFFF);
+	uint8_t val[2];
+	HAL_SPI_Receive(&hspi1, val, 2, 0xFFFF);
+	return val[0] | val[1] << 8;
 }
 
 /* USER CODE END 4 */
