@@ -45,7 +45,7 @@
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
-SPI_HandleTypeDef hspi1;
+I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart2;
 
@@ -53,6 +53,8 @@ UART_HandleTypeDef huart2;
 /* Private variables ---------------------------------------------------------*/
 
 const size_t PRINT_DEBUG_BUFFER_SIZE = 512;
+const uint8_t I2C_ADDR_ACC = 0x1e << 1;
+const uint8_t I2C_ADDR_GPS = 0x42 << 1;
 
 /* USER CODE END PV */
 
@@ -60,14 +62,15 @@ const size_t PRINT_DEBUG_BUFFER_SIZE = 512;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_SPI1_Init(void);
+static void MX_I2C1_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 
 //void write_debug(char *str, uint16_t len);
 void write_debug(char *str, ...);
-int16_t spi_read_short(uint8_t addr);
+uint8_t read_byte(uint8_t addr);
+int16_t read_short(uint8_t addr);
 
 /* USER CODE END PFP */
 
@@ -105,7 +108,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_SPI1_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -114,6 +117,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   uint8_t written = 0;
+
+  uint8_t data[2] = {0x20, 0b01000111};
+  HAL_I2C_Master_Transmit(&hi2c1, 0b00111100, data, 2, 0xffff);
+
 
   while (1)
   {
@@ -143,16 +150,32 @@ int main(void)
 
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
 
-	  //int16_t acc_x = spi_read_short(0x28);
-	  //int16_t acc_y = spi_read_short(0x2a);
-	  //int16_t acc_z = spi_read_short(0x2c);
+	  //int16_t acc_x = read_short(0x28);
+	  //int16_t acc_y = read_short(0x2a);
+	  //int16_t acc_z = read_short(0x2c);
 
-	  int16_t acc_x = spi_read_short(0x08);
-	  int16_t acc_y = spi_read_short(0x0a);
-	  int16_t acc_z = spi_read_short(0x0c);
+	  /*int16_t acc_x = read_short(0x08);
+	  int16_t acc_y = read_short(0x0a);
+	  int16_t acc_z = read_short(0x0c);*/
 
+	  /*uint8_t x2 = read_byte(0x28);
+	  uint8_t x1 = read_byte(0x29);
+	  uint8_t y2 = read_byte(0x2a);
+	  uint8_t y1 = read_byte(0x2b);
+	  uint8_t z2 = read_byte(0x2c);
+	  uint8_t z1 = read_byte(0x2d);*/
+	  int16_t x = read_short(0x28);
+	  int16_t y = read_short(0x2a);
+	  int16_t z = read_short(0x2c);
 
-	  write_debug("Gyro x=%d y=%d z=%d\n", acc_x, acc_y, acc_z);
+	  write_debug("Accel: %6d %6d %6d\n", x, y, z);
+
+	  /**uint8_t addr_arr[1] = {0x2a};
+	  HAL_I2C_Master_Transmit(&hi2c1, 0b00111100, addr_arr, 1, 0xffff);
+	  uint8_t val[2];
+	  HAL_I2C_Master_Receive(&hi2c1, 0b00111100, val, 2, 0xffff);
+	  write_debug("Read bytes: %02X %02X\n", val[0], val[1]);**/
+
 
 	  HAL_Delay(100);
 
@@ -227,24 +250,20 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
-/* SPI1 init function */
-static void MX_SPI1_Init(void)
+/* I2C1 init function */
+static void MX_I2C1_Init(void)
 {
 
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
@@ -289,9 +308,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
@@ -299,13 +315,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PC0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
@@ -333,15 +342,23 @@ void write_debug(char *str, ...) {
 		len = PRINT_DEBUG_BUFFER_SIZE - 1;
 	}
 
-	HAL_UART_Transmit(&huart2, (uint8_t *) output_str, len, 0xFFFF);
+	HAL_UART_Transmit(&huart2, (uint8_t *) output_str, len, 0xffff);
 }
 
-int16_t spi_read_short(uint8_t addr) {
-	//uint8_t addr_arr[1] = {addr};
-	//HAL_SPI_Transmit(&hspi1, addr_arr, 1, 0xFFFF);
-	uint8_t val[2];
-	HAL_SPI_Receive(&hspi1, val, 2, 0xFFFF);
-	return val[0] | val[1] << 8;
+
+uint8_t read_byte(uint8_t addr) {
+	uint8_t addr_arr[1] = {addr};
+	HAL_I2C_Master_Transmit(&hi2c1, I2C_ADDR_ACC, addr_arr, 1, 0xffff);
+	uint8_t val[1];
+	HAL_I2C_Master_Receive(&hi2c1, I2C_ADDR_ACC, val, 1, 0xffff);
+	return val[0];
+}
+
+int16_t read_short(uint8_t addr) {
+	uint8_t b1 = read_byte(addr + 1);
+	uint8_t b0 = read_byte(addr);
+	int16_t out = b1 << 8 | b0;
+	return out;
 }
 
 /* USER CODE END 4 */

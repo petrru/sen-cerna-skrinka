@@ -1,6 +1,7 @@
-main.c:176:6:SystemClock_Config	96	static
-main.c:325:6:write_debug	528	dynamic,bounded
-main.c:339:9:spi_read_short	16	static
-main.c:83:5:main	64	static
-main.c:355:6:_Error_Handler	0	static
-main.c:373:6:assert_failed	0	static
+main.c:199:6:SystemClock_Config	96	static
+main.c:334:6:write_debug	528	dynamic,bounded
+main.c:349:9:read_byte	32	static
+main.c:357:9:read_short	16	static
+main.c:86:5:main	72	static
+main.c:372:6:_Error_Handler	0	static
+main.c:390:6:assert_failed	0	static
