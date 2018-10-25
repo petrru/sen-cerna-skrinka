@@ -47,6 +47,7 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
@@ -65,6 +66,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_UART4_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -114,6 +116,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_USART1_UART_Init();
+  MX_UART4_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -204,21 +207,6 @@ int main(void)
 
 }
 
-HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout) {
-	return HAL_UART_Receive(&huart1, buffer, len, timeout);
-}
-
-void get_gps_coordinate(int32_t *lat, int32_t *lon) {
-	uint8_t buffer[1];
-	while (read_gps_bytes(buffer, 1, 1000) == HAL_OK) {
-		write_debug("%c", buffer[0]);
-	}
-	write_debug("\n\n---\n\n");
-	*lat = 491394222;  // 49° 13.94222' N
-	*lon = 163523552;  // 16° 35.23552' E
-}
-
-
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -297,12 +285,31 @@ static void MX_I2C1_Init(void)
 
 }
 
+/* UART4 init function */
+static void MX_UART4_Init(void)
+{
+
+  huart4.Instance = UART4;
+  huart4.Init.BaudRate = 115200;
+  huart4.Init.WordLength = UART_WORDLENGTH_8B;
+  huart4.Init.StopBits = UART_STOPBITS_1;
+  huart4.Init.Parity = UART_PARITY_NONE;
+  huart4.Init.Mode = UART_MODE_TX_RX;
+  huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart4.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart4) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
 /* USART1 init function */
 static void MX_USART1_UART_Init(void)
 {
 
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 9600;
+  huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -405,6 +412,20 @@ int16_t read_short(uint8_t addr) {
 	uint8_t b0 = read_byte(addr);
 	int16_t out = b1 << 8 | b0;
 	return out;
+}
+
+HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout) {
+	return HAL_UART_Receive(&huart4, buffer, len, timeout);
+}
+
+void get_gps_coordinate(int32_t *lat, int32_t *lon) {
+	uint8_t buffer[1];
+	while (read_gps_bytes(buffer, 1, 1000) == HAL_OK) {
+		write_debug("%c", buffer[0]);
+	}
+	write_debug("\n\n---\n\n");
+	*lat = 491394222;  // 49° 13.94222' N
+	*lon = 163523552;  // 16° 35.23552' E
 }
 
 /* USER CODE END 4 */
