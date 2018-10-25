@@ -47,6 +47,7 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -54,7 +55,7 @@ UART_HandleTypeDef huart2;
 
 const size_t PRINT_DEBUG_BUFFER_SIZE = 512;
 const uint8_t I2C_ADDR_ACC = 0x1e << 1;
-const uint8_t I2C_ADDR_GPS = 0x42 << 1;
+//const uint8_t I2C_ADDR_GPS = 0x42 << 1;
 
 /* USER CODE END PV */
 
@@ -63,6 +64,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -71,6 +73,8 @@ static void MX_I2C1_Init(void);
 void write_debug(char *str, ...);
 uint8_t read_byte(uint8_t addr);
 int16_t read_short(uint8_t addr);
+HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout);
+void get_gps_coordinate(int32_t *lat, int32_t *lon);
 
 /* USER CODE END PFP */
 
@@ -109,6 +113,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_I2C1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -116,11 +121,13 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  uint8_t written = 0;
+  //uint8_t written = 0;
 
-  uint8_t data[2] = {0x20, 0b01000111};
-  HAL_I2C_Master_Transmit(&hi2c1, 0b00111100, data, 2, 0xffff);
+  //uint8_t data[2] = {0x20, 0b01000111};
+  //HAL_I2C_Master_Transmit(&hi2c1, 0b00111100, data, 2, 0xffff);
 
+  //int8_t query = "GLL\r\n";
+  //HAL_UART_Transmit(&huart1, (uint8_t*) query, 5, 0xffff);
 
   while (1)
   {
@@ -131,7 +138,7 @@ int main(void)
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 	  HAL_Delay(1000);*/
 
-	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 0) {
+	  /*if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 0) {
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 
 		  if (!written) {
@@ -142,13 +149,13 @@ int main(void)
 	  } else {
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 		  written = 0;
-	  }
+	  }*/
 
 	  // OUT_X_L_A (28h), OUT_X_H_A (29h)
 	  // OUT_Y_L_A (2Ah), OUT_X_H_A (2Bh)
 	  // OUT_X_L_A (2Ch), OUT_X_H_A (2Dh)
 
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
+	  //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
 
 	  //int16_t acc_x = read_short(0x28);
 	  //int16_t acc_y = read_short(0x2a);
@@ -164,11 +171,14 @@ int main(void)
 	  uint8_t y1 = read_byte(0x2b);
 	  uint8_t z2 = read_byte(0x2c);
 	  uint8_t z1 = read_byte(0x2d);*/
-	  int16_t x = read_short(0x28);
+
+	  // WORKING ACC:
+
+	  /*int16_t x = read_short(0x28);
 	  int16_t y = read_short(0x2a);
 	  int16_t z = read_short(0x2c);
 
-	  write_debug("Accel: %6d %6d %6d\n", x, y, z);
+	  write_debug("Accel: %6d %6d %6d\n", x, y, z);*/
 
 	  /**uint8_t addr_arr[1] = {0x2a};
 	  HAL_I2C_Master_Transmit(&hi2c1, 0b00111100, addr_arr, 1, 0xffff);
@@ -177,7 +187,9 @@ int main(void)
 	  write_debug("Read bytes: %02X %02X\n", val[0], val[1]);**/
 
 
-	  HAL_Delay(100);
+	  int32_t lat, lon;
+	  get_gps_coordinate(&lat, &lon);
+	  write_debug("Lat: %d, lon: %d", lat, lon);
 
 	  // HAL_UART_Transmit(USART2, "ABC", 3, 5000);
 	  //HAL_UART_Transmit(UART5, "ABC", 3, 5000);
@@ -191,6 +203,21 @@ int main(void)
   /* USER CODE END 3 */
 
 }
+
+HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout) {
+	return HAL_UART_Receive(&huart1, buffer, len, timeout);
+}
+
+void get_gps_coordinate(int32_t *lat, int32_t *lon) {
+	uint8_t buffer[1];
+	while (read_gps_bytes(buffer, 1, 1000) == HAL_OK) {
+		write_debug("%c", buffer[0]);
+	}
+	write_debug("\n\n---\n\n");
+	*lat = 491394222;  // 49° 13.94222' N
+	*lon = 163523552;  // 16° 35.23552' E
+}
+
 
 /**
   * @brief System Clock Configuration
@@ -264,6 +291,25 @@ static void MX_I2C1_Init(void)
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
   hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
+/* USART1 init function */
+static void MX_USART1_UART_Init(void)
+{
+
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 9600;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
