@@ -190,9 +190,19 @@ int main(void)
 	  write_debug("Read bytes: %02X %02X\n", val[0], val[1]);**/
 
 
-	  int32_t lat, lon;
-	  get_gps_coordinate(&lat, &lon);
-	  write_debug("Lat: %d, lon: %d", lat, lon);
+	  //int32_t lat, lon;
+	  //get_gps_coordinate(&lat, &lon);
+	  //write_debug("Lat: %d, lon: %d", lat, lon);
+
+	  //uint8_t data[] = "AT";
+	  //HAL_UART_Transmit(&huart1, data, 2, 1000);
+	  uint8_t buffer[1];
+	  while (HAL_UART_Receive(&huart1, buffer, 1, 1000) == HAL_OK) {
+		  write_debug("O%c", buffer[0]);
+	  }
+	  write_debug("*");
+
+
 
 	  // HAL_UART_Transmit(USART2, "ABC", 3, 5000);
 	  //HAL_UART_Transmit(UART5, "ABC", 3, 5000);
@@ -290,7 +300,7 @@ static void MX_UART4_Init(void)
 {
 
   huart4.Instance = UART4;
-  huart4.Init.BaudRate = 115200;
+  huart4.Init.BaudRate = 9600;
   huart4.Init.WordLength = UART_WORDLENGTH_8B;
   huart4.Init.StopBits = UART_STOPBITS_1;
   huart4.Init.Parity = UART_PARITY_NONE;
@@ -309,7 +319,7 @@ static void MX_USART1_UART_Init(void)
 {
 
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 9600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -423,7 +433,7 @@ void get_gps_coordinate(int32_t *lat, int32_t *lon) {
 	while (read_gps_bytes(buffer, 1, 1000) == HAL_OK) {
 		write_debug("%c", buffer[0]);
 	}
-	write_debug("\n\n---\n\n");
+	//write_debug("\n\n---\n\n");
 	*lat = 491394222;  // 49° 13.94222' N
 	*lon = 163523552;  // 16° 35.23552' E
 }
