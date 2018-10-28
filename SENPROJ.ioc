@@ -45,6 +45,7 @@ NVIC.PendSV_IRQn=true\:0\:0\:false\:false\:true\:false
 NVIC.PriorityGroup=NVIC_PRIORITYGROUP_0
 NVIC.SVCall_IRQn=true\:0\:0\:false\:false\:true\:false
 NVIC.SysTick_IRQn=true\:0\:0\:true\:false\:true\:true
+NVIC.USART1_IRQn=true\:0\:0\:false\:false\:true\:true
 NVIC.UsageFault_IRQn=true\:0\:0\:false\:false\:true\:true
 PA0-WKUP.GPIOParameters=GPIO_Label
 PA0-WKUP.GPIO_Label=BlueButton

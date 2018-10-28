@@ -57,6 +57,7 @@ UART_HandleTypeDef huart2;
 const size_t PRINT_DEBUG_BUFFER_SIZE = 512;
 const uint8_t I2C_ADDR_ACC = 0x1e << 1;
 //const uint8_t I2C_ADDR_GPS = 0x42 << 1;
+uint8_t bluetooth_command = 0;
 
 /* USER CODE END PV */
 
@@ -77,6 +78,7 @@ uint8_t read_byte(uint8_t addr);
 int16_t read_short(uint8_t addr);
 HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout);
 void get_gps_coordinate(int32_t *lat, int32_t *lon);
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 
 /* USER CODE END PFP */
 
@@ -131,6 +133,8 @@ int main(void)
 
   //int8_t query = "GLL\r\n";
   //HAL_UART_Transmit(&huart1, (uint8_t*) query, 5, 0xffff);
+
+  HAL_UART_Receive_IT(&huart1, &bluetooth_command, 1);
 
   while (1)
   {
@@ -196,11 +200,15 @@ int main(void)
 
 	  //uint8_t data[] = "AT";
 	  //HAL_UART_Transmit(&huart1, data, 2, 1000);
-	  uint8_t buffer[1];
+
+	  /*uint8_t buffer[1];
 	  while (HAL_UART_Receive(&huart1, buffer, 1, 1000) == HAL_OK) {
 		  write_debug("%c", buffer[0]);
-	  }
+	  }*/
 
+
+	  write_debug("*");
+	  HAL_Delay(2000);
 
 
 	  // HAL_UART_Transmit(USART2, "ABC", 3, 5000);
@@ -435,6 +443,14 @@ void get_gps_coordinate(int32_t *lat, int32_t *lon) {
 	//write_debug("\n\n---\n\n");
 	*lat = 491394222;  // 49° 13.94222' N
 	*lon = 163523552;  // 16° 35.23552' E
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+  if (huart->Instance == USART1) {
+    write_debug("Data received: %c\r\n", bluetooth_command);
+    HAL_UART_Transmit(&huart1, (uint8_t*) "Ahojky\r\n", 8, 1000);
+    HAL_UART_Receive_IT(&huart1, &bluetooth_command, 1);
+  }
 }
 
 /* USER CODE END 4 */
