@@ -198,9 +198,8 @@ int main(void)
 	  //HAL_UART_Transmit(&huart1, data, 2, 1000);
 	  uint8_t buffer[1];
 	  while (HAL_UART_Receive(&huart1, buffer, 1, 1000) == HAL_OK) {
-		  write_debug("O%c", buffer[0]);
+		  write_debug("%c", buffer[0]);
 	  }
-	  write_debug("*");
 
 
 
