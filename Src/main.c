@@ -55,9 +55,17 @@ UART_HandleTypeDef huart2;
 /* Private variables ---------------------------------------------------------*/
 
 const size_t PRINT_DEBUG_BUFFER_SIZE = 512;
-const uint8_t I2C_ADDR_ACC = 0x1e << 1;
-//const uint8_t I2C_ADDR_GPS = 0x42 << 1;
+const uint8_t I2C_ADDR_ACC = 0b00111100; //0x1e << 1;
+const int16_t ACC_CRASH_THRESHOLD = 30000;
 uint8_t bluetooth_command = 0;
+int16_t last_acc_x = 0, last_acc_y = 0, last_acc_z = 0, last_acc_abs = 0;
+int16_t max_acc_x = 0, max_acc_y = 0, max_acc_z = 0, max_acc_abs = 0;
+
+typedef enum {
+	INIT_ACC, WAIT_FOR_CRASH, CRASHING, SEND_GPS
+} state_t;
+
+state_t state = INIT_ACC;
 
 /* USER CODE END PV */
 
@@ -73,11 +81,13 @@ static void MX_UART4_Init(void);
 /* Private function prototypes -----------------------------------------------*/
 
 //void write_debug(char *str, uint16_t len);
-void write_debug(char *str, ...);
-uint8_t read_byte(uint8_t addr);
-int16_t read_short(uint8_t addr);
-HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout);
-void get_gps_coordinate(int32_t *lat, int32_t *lon);
+static void write_debug(char *str, ...);
+static uint8_t read_byte(uint8_t addr);
+static int16_t read_short(uint8_t addr);
+static int16_t absolute(int16_t val);
+static HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout);
+static void get_gps_coordinate(int32_t *lat, int32_t *lon);
+static void read_acc_data();
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 
 /* USER CODE END PFP */
@@ -128,9 +138,6 @@ int main(void)
 
   //uint8_t written = 0;
 
-  //uint8_t data[2] = {0x20, 0b01000111};
-  //HAL_I2C_Master_Transmit(&hi2c1, 0b00111100, data, 2, 0xffff);
-
   //int8_t query = "GLL\r\n";
   //HAL_UART_Transmit(&huart1, (uint8_t*) query, 5, 0xffff);
 
@@ -164,28 +171,59 @@ int main(void)
 
 	  //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
 
-	  //int16_t acc_x = read_short(0x28);
-	  //int16_t acc_y = read_short(0x2a);
-	  //int16_t acc_z = read_short(0x2c);
+	  switch (state) {
+	  case INIT_ACC:
+		  uint8_t alive = read_short(0x0f);
+		  if (alive == 0x49) {
+			  uint8_t data[2] = {0x20, 0b01000111};
+			  if (HAL_I2C_Master_Transmit(&hi2c1, 0b00111100, data, 2, 0xffff) == HAL_OK) {
+				  state = WAIT_FOR_CRASH;
+			  } else {
+				  write_debug("Error while configuring acc.\r\n");
+				  HAL_Delay(50);
+			  }
+		  } else {
+			  write_debug("Acc is not connected yet.\r\n");
+			  HAL_Delay(10);
+		  }
+		  break;
+	  case WAIT_FOR_CRASH:
+		  // Read data from accelerometer
+		  read_acc_data();
+		  if (last_acc_abs > ACC_CRASH_THRESHOLD) {
+			  state = CRASHING;
+			  max_acc_x = last_acc_x;
+			  max_acc_y = last_acc_y;
+			  max_acc_z = last_acc_z;
+			  max_acc_abs = last_acc_abs;
+		  }
 
-	  /*int16_t acc_x = read_short(0x08);
-	  int16_t acc_y = read_short(0x0a);
-	  int16_t acc_z = read_short(0x0c);*/
+		  write_debug("Accel: %6d %6d %6d %6d\n", last_acc_x, last_acc_y, last_acc_z,
+				  last_acc_abs);
+		  HAL_Delay(25);
+		  break;
+	  case CRASHING:
+		  write_debug("Crashing\n");
 
-	  /*uint8_t x2 = read_byte(0x28);
-	  uint8_t x1 = read_byte(0x29);
-	  uint8_t y2 = read_byte(0x2a);
-	  uint8_t y1 = read_byte(0x2b);
-	  uint8_t z2 = read_byte(0x2c);
-	  uint8_t z1 = read_byte(0x2d);*/
+		  read_acc_data();
+		  if (last_acc_abs < ACC_CRASH_THRESHOLD) {
+			  state = SEND_GPS;
+		  } else if (last_acc_abs > max_acc_abs) {
+			  max_acc_x = last_acc_x;
+			  max_acc_y = last_acc_y;
+			  max_acc_z = last_acc_z;
+			  max_acc_abs = last_acc_abs;
+		  }
+		  break;
+	  case SEND_GPS:
+		  write_debug("Sending GPS data\n");
 
-	  // WORKING ACC:
+		  state = WAIT_FOR_CRASH;
+		  HAL_Delay(3000);
+		  break;
+	  }
 
-	  /*int16_t x = read_short(0x28);
-	  int16_t y = read_short(0x2a);
-	  int16_t z = read_short(0x2c);
 
-	  write_debug("Accel: %6d %6d %6d\n", x, y, z);*/
 
 	  /**uint8_t addr_arr[1] = {0x2a};
 	  HAL_I2C_Master_Transmit(&hi2c1, 0b00111100, addr_arr, 1, 0xffff);
@@ -207,8 +245,8 @@ int main(void)
 	  }*/
 
 
-	  write_debug("*");
-	  HAL_Delay(2000);
+	  //write_debug("*");
+
 
 
 	  // HAL_UART_Transmit(USART2, "ABC", 3, 5000);
@@ -443,6 +481,34 @@ void get_gps_coordinate(int32_t *lat, int32_t *lon) {
 	//write_debug("\n\n---\n\n");
 	*lat = 491394222;  // 49° 13.94222' N
 	*lon = 163523552;  // 16° 35.23552' E
+}
+
+int16_t absolute(int16_t val) {
+	if (val >= 0) {
+		return val;
+	} else if (val == -32768) {
+		return 32767;
+	} else {
+		return -val;
+	}
+}
+
+void read_acc_data() {
+	last_acc_x = read_short(0x28);
+	last_acc_y = read_short(0x2a);
+	last_acc_z = read_short(0x2c);
+
+	int16_t acc_abs = absolute(last_acc_x);
+	int16_t tmp = absolute(last_acc_y);
+	if (tmp > acc_abs) {
+		acc_abs = tmp;
+	}
+	// Uncomment to care about the z-axis:
+	// tmp = absolute(last_acc_z);
+	// if (tmp > acc_abs) {
+	//	 acc_abs = tmp;
+	// }
+	last_acc_abs = acc_abs;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
