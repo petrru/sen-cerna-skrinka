@@ -16,8 +16,8 @@ import app.akexorcist.bluetotohspp.library.DeviceList;
 
 public class MainActivity extends AppCompatActivity {
 
-    final String ON = "1";
-    final String OFF = "0";
+    final String CMD_GPS = "g";
+    final String CMD_ACC = "a";
 
     BluetoothSPP bluetooth;
 
@@ -79,14 +79,14 @@ public class MainActivity extends AppCompatActivity {
         btnOn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                bluetooth.send(ON, false);
+                bluetooth.send(CMD_GPS, false);
             }
         });
 
         btnOff.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                bluetooth.send(OFF, false);
+                bluetooth.send(CMD_ACC, false);
             }
         });
 
