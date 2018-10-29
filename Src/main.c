@@ -88,6 +88,7 @@ static int16_t absolute(int16_t val);
 static HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout);
 static void get_gps_coordinate(int32_t *lat, int32_t *lon);
 static void read_acc_data();
+static uint8_t read_gps_byte();
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 
 /* USER CODE END PFP */
@@ -136,11 +137,6 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  //uint8_t written = 0;
-
-  //int8_t query = "GLL\r\n";
-  //HAL_UART_Transmit(&huart1, (uint8_t*) query, 5, 0xffff);
-
   HAL_UART_Receive_IT(&huart1, &bluetooth_command, 1);
 
   while (1)
@@ -171,20 +167,23 @@ int main(void)
 
 	  //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, GPIO_PIN_RESET);
 
+	  uint8_t alive;
+
 	  switch (state) {
 	  case INIT_ACC:
-		  uint8_t alive = read_short(0x0f);
+		  alive = read_byte(0x0f);
 		  if (alive == 0x49) {
 			  uint8_t data[2] = {0x20, 0b01000111};
-			  if (HAL_I2C_Master_Transmit(&hi2c1, 0b00111100, data, 2, 0xffff) == HAL_OK) {
-				  state = WAIT_FOR_CRASH;
+			  if (HAL_I2C_Master_Transmit(&hi2c1, I2C_ADDR_ACC, data, 2, 0xffff) == HAL_OK) {
+				  //state = WAIT_FOR_CRASH;
+				  state = SEND_GPS;
 			  } else {
 				  write_debug("Error while configuring acc.\r\n");
 				  HAL_Delay(50);
 			  }
 		  } else {
 			  write_debug("Acc is not connected yet.\r\n");
-			  HAL_Delay(10);
+			  HAL_Delay(1000);
 		  }
 		  break;
 	  case WAIT_FOR_CRASH:
@@ -218,7 +217,11 @@ int main(void)
 	  case SEND_GPS:
 		  write_debug("Sending GPS data\n");
 
-		  state = WAIT_FOR_CRASH;
+		  int32_t lat = 0, lon = 0;
+		  get_gps_coordinate(&lat, &lon);
+		  write_debug("Found GPS: lat=%d lon=%d\n", lat, lon);
+
+		  // state = WAIT_FOR_CRASH;
 		  HAL_Delay(3000);
 		  break;
 	  }
@@ -469,14 +472,89 @@ int16_t read_short(uint8_t addr) {
 	return out;
 }
 
+uint8_t read_gps_byte() {
+	uint8_t buffer;
+	if (HAL_UART_Receive(&huart4, &buffer, 1, 2000) == HAL_OK) {
+		return buffer;
+	} else {
+		return 0x00;
+	}
+}
+
 HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout) {
 	return HAL_UART_Receive(&huart4, buffer, len, timeout);
 }
 
+typedef enum {
+	DOLLAR, G, GP, GPG, GPGL, GPGLL, FIRST_COMMA, LAT_NUM, LAT_DECIMALS,
+	N_OR_S, COMMA_BEFORE_LON, LON_NUM, LON_POINT, LON_DECIMALS,
+	DONE
+} gps_state_t;
+
+// $GPGLL,4913.94625,N,01635.23247,E,102412.00,A,A*6F
+
 void get_gps_coordinate(int32_t *lat, int32_t *lon) {
-	uint8_t buffer[1];
-	while (read_gps_bytes(buffer, 1, 1000) == HAL_OK) {
-		write_debug("%c", buffer[0]);
+	uint8_t ch;
+	gps_state_t s = DOLLAR;
+	uint8_t decimals;
+	while (s != DONE) {
+		ch = read_gps_byte();
+		switch (s) {
+		case DOLLAR:
+			s = ch == '$' ? G : DOLLAR; break;
+		case G:
+			s = ch == 'G' ? GP : DOLLAR; break;
+		case GP:
+			s = ch == 'P' ? GPG : DOLLAR; break;
+		case GPG:
+			s = ch == 'G' ? GPGL : DOLLAR; break;
+		case GPGL:
+			s = ch == 'L' ? GPGLL : DOLLAR; break;
+		case GPGLL:
+			s = ch == 'L' ? FIRST_COMMA : DOLLAR; break;
+		case FIRST_COMMA:
+			s = ch == ',' ? LAT_NUM : DOLLAR;
+			*lat = 0;
+			*lon = 0;
+			break;
+		case LAT_NUM:
+			if (ch >= '0' && ch < '9') {
+				*lat = *lat * 10 + (ch - '0');
+			} else if (ch == ',') {
+				write_debug("No GPS signal\n");
+				// return;
+			} else if (ch == '.') {
+				s = LAT_DECIMALS;
+				decimals = 0;
+			} else {
+				s = DOLLAR;
+			}
+			break;
+		case LAT_DECIMALS:
+			write_debug("--> LAT: %d\n", *lat);
+			if (ch >= '0' && ch < '9') {
+				if (decimals < 5) {
+					*lat = *lat * 10 + (ch - '0');
+					decimals++;
+				}
+			} else if (ch == ',') {
+				while (decimals < 5) {
+					*lat *= 10;
+					decimals++;
+				}
+				s = N_OR_S;
+			} else {
+				s = DOLLAR;
+			}
+			break;
+		default:
+			s = DOLLAR;
+			write_debug("\n", ch);
+			break;
+		}
+		if (s != DOLLAR) {
+			write_debug("%c", ch);
+		}
 	}
 	//write_debug("\n\n---\n\n");
 	*lat = 491394222;  // 49° 13.94222' N
