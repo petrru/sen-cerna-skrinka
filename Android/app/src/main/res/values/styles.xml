@@ -8,4 +8,20 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="AppButton" parent="android:Widget">
+        <item name="android:background">@drawable/btn_shape</item>
+    </style>
+
+    <style name="AppButtonDisabled" parent="android:Widget">
+        <item name="android:background">@drawable/btn_shape_disabled</item>
+    </style>
+
+    <style name="AppTV" parent="android:Widget">
+        <item name="android:background">@drawable/tv_shape</item>
+    </style>
+
+    <style name="AppMapOverlay" parent="android:Widget">
+        <item name="android:background">@drawable/map_overlay_shape</item>
+    </style>
+
 </resources>
