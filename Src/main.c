@@ -432,9 +432,14 @@ HAL_StatusTypeDef read_gps_bytes(uint8_t buffer[], uint8_t len, uint32_t timeout
 // Exmaple line: $GPGLL,4913.94625,N,01635.23247,E,102412.00,A,A*6F
 
 void get_gps_coordinate(int32_t *lat, int32_t *lon) {
+
+	// read_gps_byte
+
+
+
 	// TODO
-	*lat = 491394222;  // 49° 13.94222' N
-	*lon = 163523552;  // 16° 35.23552' E
+	*lat = 484519033;  // 491394222  // 49° 13.94222' N
+	*lon = 175013900;  // 163523552  // 16° 35.23552' E
 }
 
 int16_t absolute(int16_t val) {

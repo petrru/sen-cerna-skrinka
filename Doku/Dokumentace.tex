@@ -9,7 +9,7 @@
 \author{Petr Rusiňák (xrusin03), Andrej Hučko (xhucko01)}
 \date{Říjen 2018}
 \usepackage{graphicx}
-\usepackage{makecell}
+%\usepackage{makecell}
 \usepackage[hidelinks]{hyperref}
 \usepackage{listings}
 
@@ -21,8 +21,8 @@
 \section{Úvod}
 
 Cílem tohoto projektu je vytvořit jednoduchou „černou skříňku“ pro automobil, která
-v~případě detekce nárazu odešle prostřednictvím Bluetooth informaci o~poloze vozidla
-a~síle nárazu na server. Na serveru bude spuštěna aplikace, která tyto získané přijaté údaje
+v~případě detekce nárazu odešle prostřednictvím technologie Bluetooth informaci o~poloze vozidla
+a~síle nárazu na server. Na serveru je spuštěna aplikace, která tyto získané přijaté údaje
 zobrazí.
 
 \section{Použité zařízení a~technologie}
@@ -69,6 +69,7 @@ Zprávy zasílané černou skříňkou na server mají vždy délku jednoho řá
 bajty \texttt{CR+LF}.
 Pokyny odesílané serverem do skříňky obsahují vždy jen jeden bajt a~neukončují se pomocí \texttt{CR+LF}.
 
+\newpage
 \subsection{Zpráva o~detekovaném nárazu}
 \label{crash}
 Bude-li skříňkou detekován náraz, odešle černá skříňka bez jakéhokoliv vyžádání
@@ -109,7 +110,7 @@ Pro vyžádání aktuální polohy odešle server skříňku zprávu obsahujíc�
 Na tento požadavek skříňka odpoví následující zprávou:
 
 \begin{lstlisting}[escapeinside={(*}{*)}]
-crash;[lat];[lon]
+gps;[lat];[lon]
 \end{lstlisting}
 
 kde význam \texttt{[lat]} a~\texttt{[lon]} je totožný jako u~zprávy \ref{crash}.
@@ -169,29 +170,32 @@ které byly naposledy získány při čtení dat z~akcelerometru ve stavu \textt
 nebo \texttt{CRASHING}. V~případě žádosti o~GPS jsou data ze senzoru čtena až v~okamžiku,
 kdy jsou vyžádána.
 
-\section{Implementace serverové aplikace pro Android}
+\section{Implementace serverové aplikace}
+Serverová aplikácia je realizovaná pomocou mobilnej aplikácie pre OS Android, jej implementácia je realizovaná v jazyku Java 8. Pripojenie čiernej skrinky ku serveru je realizované pomocou technológie Bluetooth. Pri spustení aplikácie je automaticky skontrolovaná funkčnosť a zapne bluetooth v mobilnom zariadení. Užívateľské rozhranie aplikácie pozostáva z tlačidiel pre pripojenie čiernej skrinky, tlačidlá pre skúšobný mód (odosielajúce príkazy pre získanie aktuálnych GPS súradníc skrinky alebo jej aktuálne hodnoty akcelerometra). Hlavnú časť obrazovky vypĺňa informačný panel logujúci vykonané akcie (pripojenie, úspešnosť pripojenia, získanie dát,...). Pri obdržaní „crash“ správy aplikácia nahlási užívateľovi túto udalosť s ponukou na zobrazenie zaznemenaných dát. Zobrazenie GPS súradníc je realizované pomocou Google API.\footnote{https://developers.google.com/maps/documentation/android-sdk/intro} 
 
-...
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[scale=0.15]{img/sen_blackbox_main.png}
+\hspace{1em}
+\includegraphics[scale=0.15]{img/sen_blackbox_crash.png}
+\caption{Serverová aplikácia čiernej skrinky}
+\end{center}
+\end{figure}
 
+\newpage
 \section{Autoři}
 
 Na řešení projektu se podíleli následující autoři:
 
 \begin{itemize}
 \item Petr Rusiňák (xrusin03) -- programování kitu STM32 Nucleo, dokumentace
-\item Andrej Hučko (xhucko01) -- vývoj Android aplikace
+\item Andrej Hučko (xhucko01) -- vývoj Android aplikace, dokumentácia
 \end{itemize}
 
 \section{Závěr}
 
-Vytvořené řešení plní roli černé skříňky, která v~případě detekce nárazu odešle
-informaci místě události a~síle nárazu na server...
-
-TODO
-
-
-
-
+Vytvorené riešenie plní rolu čiernej skrinky, ktotá v~prípade detekcie nárazu odošle
+informáciu o mieste udalosti a~sile nárazu pomocou Bluetooth na server, který realizovaný pomocou aplikácie pre Android, teda server môže predstavovať ľubovoľný smartfón. Serverová aplikácia má tiež tzv. debug mód, cez ktorý možno sledovať živé hodnoty GPS modulu a akcelerometra čiernej skrinky.
 
 \end{document}
 
